@@ -3,20 +3,41 @@
 %this is the main function. Run it to start the game.
 main :- 
 	write("Welcome to minesweeper!"), nl,
-	write("Number of rows:     "), read(Nrow), 
-	write("Number of columns:  "), read(Ncol), 
-	write("Number of mines:    "), read(Nmines),nl,
+	get_info(Nrow,Ncol,Nmines,Nlives),		
+	validate_inputs(Nrow,Ncol,Nmines,Nlives).
+	
+
+%get_info(Nrow,Ncol,Nmines,Nlives) reads user input and is true if each of the above are valid inputs.
+get_info(Nrow,Ncol,Nmines,Nlives) :-
+	write("Number of rows:    (max 100) "), read(Nrow), 
+	write("Number of columns: (max 30)  "), read(Ncol), 
+	write("Number of mines:             "), read(Nmines),
+	write("Number of lives:             "), read(Nlives),nl.
+
+%validate_inputs is true if Nrow,Ncol,Nmines, and Nlives, are valid. If they are the game process is continued. If not, the game process is terminated.
+validate_inputs(Nrow,Ncol,Nmines,Nlives) :- 
+	check_inputs(Nrow,Ncol,Nmines,Nlives),
 	print_info(Nrow,Ncol,Nmines), nl,
 	generate_game_board(Nrow,Ncol,Nmines,GameBoard),
-	print_game_board(Nrow,Ncol,GameBoard).
+	print_game_board(Nrow,Ncol,GameBoard).	
+validate_inputs(Nrow,Ncol,Nmines,Nlives) :-
+	\+ check_inputs(Nrow,Ncol,Nmines,Nlives),
+	write("Bad inputs! Terminating game"), nl.
 
+%check_inputs(Nrow,Ncol,Nmines,Nlives) is true if each of the above parameters are okay for game creation.
+check_inputs(Nrow,Ncol,Nmines,Nlives) :-
+	number(Nrow),number(Ncol),number(Nmines),number(Nlives),
+	Nrow > 0, Nrow < 101, Ncol > 0, Ncol < 31, Nmines > 0, Nmines < Nrow*Ncol, Nlives > 0.
+
+	
 %----------------------------------------SECTION A: BOARD PRINTING PREDICATES/FUNCIONS-----------------------------------------
+
 %Print_info(Nrow,Ncol,Nmines) prints out the information fo the initial game board.
 print_info(Nrow,Ncol,Nmines) :-
 	write("You have initialized a game board with: "), nl,
 	write(Nrow), write(" rows and "), write(Ncol), write(" columns, totalling"), nl,
 	Ncells is Ncol*Nrow,
-	write(Ncells), write(" cells with " ), write(Nmines), write(" mines").
+	write(Ncells), write(" cells with " ), write(Nmines), write(" mines"), nl.
 
 %print_number(Num) prints Num with either one trailing space or bordered spaces depending on the number.
 print_number(Num) :- Num < 10, write(" "),write(Num),write(" ").
@@ -94,16 +115,19 @@ list_ref_2d(Row,Col,L,R) :-
 	list_ref(Row,L,RowList), list_ref(Col,RowList,R).
 	
 %list_ref(N,L,R) is true when R is the Nth element of L. 1-based indexing.
+%why the hell did I use an accumulator
 list_ref(N,L,R) :- length(L,Length), Length+1 > N, list_ref(N,1,L,R).
 list_ref(N,N,[R|T],R).
 list_ref(N,Cur,[_|T],R) :- Cur < N, Next is Cur+1, list_ref(N,Next,T,R).
 
 %list_set(N,E,L,R) is true when R is L with the Nth element changed to E.
+list_set(N,E,L,L) :- N < 1.
 list_set(N,E,L,R) :- list_set(N,1,E,L,R).
 list_set(N,N,E,[_|T],[E|T]).
 list_set(N,Cur,E,[H|T],[H|R]) :- Cur < N, Next is Cur + 1, list_set(N,Next,E,T,R).
 
 %list_set_2d(Row,Col,E,L,R) is true when R corresponds to the 2d list L with (Row,Col) changed to E.
+list_set_2d(Row,Col,E,L,L) :- Row < 1.
 list_set_2d(Row,Col,E,L,R) :-
 	list_ref(Row,L,RowList), list_set(Col,E,RowList,NewRowList),
 	list_set(Row,NewRowList,L,R).	
@@ -139,7 +163,7 @@ slot_mines(Board,[Position|R],MinesGameBoard) :-
 count_adjacent(Ncells,Nrow,Ncol,MinesGameBoard,GameBoard) :- count_adjacent(Ncells,Nrow,Ncol,1,MinesGameBoard,GameBoard).
 count_adjacent(Ncells,Nrow,Ncol,Ncells,GameBoard,GameBoard).
 count_adjacent(Ncells,Nrow,Ncol,Current,GameBoard,FinalGameBoard) :-
-	Current<Ncells,
+	Current<Ncells+1,
 	is(Row,ceil(Current/Ncol)),
 	is(Col,mod(Current-1,Ncol)+1),
 	update_cell_adjacency(Nrow,Ncol,Row,Col,GameBoard,NextGameBoard),
