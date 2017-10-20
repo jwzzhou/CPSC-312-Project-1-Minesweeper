@@ -9,8 +9,8 @@ main :-
 
 %get_info(Nrow,Ncol,Nmines,Nlives) reads user input and is true if each of the above are valid inputs.
 get_info(Nrow,Ncol,Nmines,Nlives) :-
-	write("Number of rows:    (max 100) "), read(Nrow), 
-	write("Number of columns: (max 30)  "), read(Ncol), 
+	write("Number of rows:    (max 99) "), read(Nrow), 
+	write("Number of columns: (max 50)  "), read(Ncol), 
 	write("Number of mines:             "), read(Nmines),
 	write("Number of lives:             "), read(Nlives),nl.
 
@@ -18,8 +18,10 @@ get_info(Nrow,Ncol,Nmines,Nlives) :-
 validate_inputs(Nrow,Ncol,Nmines,Nlives) :- 
 	check_inputs(Nrow,Ncol,Nmines,Nlives),
 	print_info(Nrow,Ncol,Nmines), nl,
-	generate_game_board(Nrow,Ncol,Nmines,GameBoard),
-	print_game_board(Nrow,Ncol,GameBoard).	
+	generate_game_board(Nrow,Ncol,Nmines,Gameboard),
+	empty_game_board(Nrow,Ncol,Revealed),
+	print_game_board(Nrow,Ncol,Gameboard,Revealed),
+	start_game(Nrow,Ncol,Nlives,Gameboard,Revealed).	
 validate_inputs(Nrow,Ncol,Nmines,Nlives) :-
 	\+ check_inputs(Nrow,Ncol,Nmines,Nlives),
 	write("Bad inputs! Terminating game"), nl.
@@ -27,7 +29,7 @@ validate_inputs(Nrow,Ncol,Nmines,Nlives) :-
 %check_inputs(Nrow,Ncol,Nmines,Nlives) is true if each of the above parameters are okay for game creation.
 check_inputs(Nrow,Ncol,Nmines,Nlives) :-
 	number(Nrow),number(Ncol),number(Nmines),number(Nlives),
-	Nrow > 0, Nrow < 101, Ncol > 0, Ncol < 31, Nmines > 0, Nmines < Nrow*Ncol, Nlives > 0.
+	Nrow > 0, Nrow < 100, Ncol > 0, Ncol < 51, Nmines > 0, Nmines < Nrow*Ncol, Nlives > 0.
 
 	
 %----------------------------------------SECTION A: BOARD PRINTING PREDICATES/FUNCIONS-----------------------------------------
@@ -43,12 +45,12 @@ print_info(Nrow,Ncol,Nmines) :-
 print_number(Num) :- Num < 10, write(" "),write(Num),write(" ").
 print_number(Num) :- Num > 9, write(Num), write(" ").
 
-%printGameBoard is called after initialization and each player move. It prints out row and column numbers, along with the 
+%printGameboard is called after initialization and each player move. It prints out row and column numbers, along with the 
 %current state of the board.
-print_game_board(Nrow,Ncol,GameBoard):-
+print_game_board(Nrow,Ncol,Gameboard, Revealed):-
 	print_header(Ncol),
 	print_separator(Ncol),
-	print_field(Nrow,Ncol,GameBoard),
+	print_field(Nrow,Ncol,Gameboard, Revealed),
 	print_separator(Ncol),
 	print_header(Ncol).
 
@@ -73,22 +75,31 @@ print_header_helper(CurCol,CurNo) :-
 print_separator(Ncol) :-
 	write("---+"), repeat("---",Ncol), write("+---"), nl.
 
-%print_field(Nrow,Ncol,mines,revealed) prints out the game board, with row numbers labelled on the side.
-print_field(Nrow,Ncol,GameBoard) :- 
-	print_field_helper(Nrow,Ncol,GameBoard,1).
-print_field_helper(Nrow,_,_,CurRow) :- CurRow > Nrow.
-print_field_helper(Nrow,Ncol,GameBoard,CurRow) :- 
+%print_field(Nrow,Ncol,Gameboard,revealed) prints out the game board, with row numbers labelled on the side.
+print_field(Nrow,Ncol,Gameboard, Revealed) :- 
+	print_field_helper(Nrow,Ncol,Gameboard,1, Revealed).
+print_field_helper(Nrow,_,_,CurRow, _) :- CurRow > Nrow.
+print_field_helper(Nrow,Ncol,Gameboard,CurRow, Revealed) :- 
 	print_number(CurRow), write("|"), 
-	list_ref(CurRow,GameBoard,GameBoardRow),
-	print_game_board_row(GameBoardRow), 
+	list_ref(CurRow,Gameboard,GameboardRow),
+	print_game_board_row(GameboardRow,CurRow,1,Revealed), 
 	write("|"), write("  "), write(CurRow),nl,
-	NextRow is CurRow + 1, print_field_helper(Nrow,Ncol,GameBoard,NextRow).
+	NextRow is CurRow + 1, print_field_helper(Nrow,Ncol,Gameboard,NextRow,Revealed).
 
-%print_game_board_row(GameBoardRow) print the row of the gameboard.
-print_game_board_row([]).
-print_game_board_row([H|T]) :-
-	write(" "), write(H), write(" "),
-	print_game_board_row(T).
+%print_game_board_row(GameboardRow) print the row of the gameboard.
+%If revealed[CurRow,CurCol] is 1, then the character is printed; otherwise a "." is printed.
+print_game_board_row([],_,_,_).
+print_game_board_row([H|T],CurRow, CurCol, Revealed) :-
+	list_ref_2d(CurRow,CurCol,Revealed,RE),
+	get_symbol(H,RE,R),
+	write(" "), write(R), write(" "),
+	Next is CurCol+1,
+	print_game_board_row(T,CurRow, Next, Revealed).
+
+%get_symbol is true when GBE is R and RE is 1, or
+%R is . and RE is z.
+get_symbol(_,z,".").
+get_symbol(R,1,R).
 	
 %---------------------------------------------SECTION B: HELPFUL LIST OPERATIONS-------------------------
 	
@@ -134,67 +145,151 @@ list_set_2d(Row,Col,E,L,R) :-
 	
 %---------------------------------------------SECTION C: INITIALIZATION---------------------------------
 
-%generateMines Nrow,Ncol,Nmines,GameBoard is true when GameBoard is a 2D list containing mines and adjacency numbers.
+%generateMines Nrow,Ncol,Nmines,Gameboard is true when Gameboard is a 2D list containing mines and adjacency numbers.
 %This list contains Nrow elements, each element is a list of Ncol. 
 %There will be no duplicates.
-generate_game_board(Nrow,Ncol,Nmines,GameBoard) :-
+generate_game_board(Nrow,Ncol,Nmines,Gameboard) :-
 	Ncells is Nrow*Ncol, build_list(Ncells,CellList),
 	randselect(Nmines,CellList,MineCells),
 	empty_game_board(Nrow,Ncol,EGB),
-	slot_mines(EGB,MineCells,MinesGameBoard),
-	count_adjacent(Ncells,Nrow,Ncol,MinesGameBoard,GameBoard).
+	slot_mines(EGB,MineCells,MinesGameboard),
+	count_adjacent(Ncells,Nrow,Ncol,MinesGameboard,Gameboard).
+	
+%generate_matrix is true if M is a matrix of Nrow x Ncol filled with Filler.
+generate_matrix(Nrow,Ncol,Filler,M) :-
+	repeat_list(Filler,Ncol,Res),
+	repeat_list(Res,Nrow,M).
 
 %empty_game_bard is true when EGB is an empty 2D list of dimensions Nrow x Ncol (placeholder is symbol z).
 empty_game_board(Nrow,Ncol,EGB) :- 
-	repeat_list(z,Ncol,Res),
-	repeat_list(Res,Nrow,EGB).
+	generate_matrix(Nrow,Ncol,z,EGB).
 
-%slot_mines(Board,MineCells,NextBoard) is true when MinesGameBoard is Board with each postition given by MineCells containing a mine - represented by x.
+%slot_mines(Board,MineCells,NextBoard) is true when MinesGameboard is Board with each postition given by MineCells containing a mine - represented by x.
 slot_mines(Board,[],Board).
-slot_mines(Board,[Position|R],MinesGameBoard) :-
+slot_mines(Board,[Position|R],MinesGameboard) :-
 	list_ref(1,Board,SampleList), length(SampleList,Ncol),
 	is(Row,ceil(Position/Ncol)),
 	is(Col,mod(Position-1,Ncol)+1),
 	list_set_2d(Row,Col,x,Board,NextBoard),
-	slot_mines(NextBoard,R,MinesGameBoard).
+	slot_mines(NextBoard,R,MinesGameboard).
 
-%-count_adjacent(Ncells,MinesGameBoard,GameBoard) is true when GameBoard is MinesGameBoard(which has Ncells cells) with all 'z' symbols updated
+%-count_adjacent(Ncells,MinesGameboard,Gameboard) is true when Gameboard is MinesGameboard(which has Ncells cells) with all 'z' symbols updated
 % to count the number of 'x' in adjacent squares.
-count_adjacent(Ncells,Nrow,Ncol,MinesGameBoard,GameBoard) :- count_adjacent(Ncells,Nrow,Ncol,1,MinesGameBoard,GameBoard).
-count_adjacent(Ncells,Nrow,Ncol,Ncells,GameBoard,GameBoard).
-count_adjacent(Ncells,Nrow,Ncol,Current,GameBoard,FinalGameBoard) :-
+count_adjacent(Ncells,Nrow,Ncol,MinesGameboard,Gameboard) :- count_adjacent(Ncells,Nrow,Ncol,1,MinesGameboard,Gameboard).
+count_adjacent(Ncells,Nrow,Ncol,N,Gameboard,Gameboard) :- N > Ncells.
+count_adjacent(Ncells,Nrow,Ncol,Current,Gameboard,FinalGameboard) :-
 	Current<Ncells+1,
 	is(Row,ceil(Current/Ncol)),
 	is(Col,mod(Current-1,Ncol)+1),
-	update_cell_adjacency(Nrow,Ncol,Row,Col,GameBoard,NextGameBoard),
+	update_cell_adjacency(Nrow,Ncol,Row,Col,Gameboard,NextGameboard),
 	Next is Current+1,
-	count_adjacent(Ncells,Nrow,Ncol,Next,NextGameBoard,FinalGameBoard).
+	count_adjacent(Ncells,Nrow,Ncol,Next,NextGameboard,FinalGameboard).
 
-%update_cell_adjacency(Nrow,Ncol,Row,Col,GameBoard,NextGameBoard) is true if NextGameBoard is GameBoard but the cell at (Row,Col) is udpated to count surrounding mines,
+%update_cell_adjacency(Nrow,Ncol,Row,Col,Gameboard,NextGameboard) is true if NextGameboard is Gameboard but the cell at (Row,Col) is udpated to count surrounding mines,
 %or is left untouched if it is a mine.
-update_cell_adjacency(_,_,Row,Col,GameBoard,GameBoard) :- list_ref_2d(Row,Col,GameBoard,x).
-update_cell_adjacency(Nrow,Ncol,Row,Col,GameBoard,NextGameBoard) :- list_ref_2d(Row,Col,GameBoard,Cell), dif(x,Cell),
-	count_mines(Nrow,Ncol,Row,Col,GameBoard,Nmines),list_set_2d(Row,Col,Nmines,GameBoard,NextGameBoard).
+update_cell_adjacency(_,_,Row,Col,Gameboard,Gameboard) :- list_ref_2d(Row,Col,Gameboard,x).
+update_cell_adjacency(Nrow,Ncol,Row,Col,Gameboard,NextGameboard) :- list_ref_2d(Row,Col,Gameboard,Cell), dif(x,Cell),
+	count_mines(Nrow,Ncol,Row,Col,Gameboard,Nmines),list_set_2d(Row,Col,Nmines,Gameboard,NextGameboard).
 
-%count_mines is true if Nmines is the number of mines adjacent to (Row,Col) on GameBoard.
-count_mines(Nrow,Ncol,Row,Col,GameBoard,Nmines) :-
+%count_mines is true if Nmines is the number of mines adjacent to (Row,Col) on Gameboard.
+count_mines(Nrow,Ncol,Row,Col,Gameboard,Nmines) :-
 	URow is Row-1,DRow is Row+1,LCol is Col-1,RCol is Col+1,
-	mine_at_cell(Nrow,Ncol,URow,LCol,GameBoard,MineUL),
-	mine_at_cell(Nrow,Ncol,URow,Col,GameBoard,MineUC),
-	mine_at_cell(Nrow,Ncol,URow,RCol,GameBoard,MineUR),
-	mine_at_cell(Nrow,Ncol,Row,LCol,GameBoard,MineCL),
-	mine_at_cell(Nrow,Ncol,Row,RCol,GameBoard,MineCR),
-	mine_at_cell(Nrow,Ncol,DRow,LCol,GameBoard,MineLL),
-	mine_at_cell(Nrow,Ncol,DRow,Col,GameBoard,MineLC),
-	mine_at_cell(Nrow,Ncol,DRow,RCol,GameBoard,MineLR),
+	mine_at_cell(Nrow,Ncol,URow,LCol,Gameboard,MineUL),
+	mine_at_cell(Nrow,Ncol,URow,Col,Gameboard,MineUC),
+	mine_at_cell(Nrow,Ncol,URow,RCol,Gameboard,MineUR),
+	mine_at_cell(Nrow,Ncol,Row,LCol,Gameboard,MineCL),
+	mine_at_cell(Nrow,Ncol,Row,RCol,Gameboard,MineCR),
+	mine_at_cell(Nrow,Ncol,DRow,LCol,Gameboard,MineLL),
+	mine_at_cell(Nrow,Ncol,DRow,Col,Gameboard,MineLC),
+	mine_at_cell(Nrow,Ncol,DRow,RCol,Gameboard,MineLR),
 	Nmines is MineUL + MineUC + MineUR + MineCL + MineCR + MineLL + MineLC + MineLR.
 
 %mine_at_cell(Nrow,Ncol,Row,Col,Gameboard,Val) is true if Gameboard[Row,Col] is a mine and Val is 1, or
 %Gameboard[Row,Col] is out of bounds and Val is 0, or Gameboard{Row,Col} is not a mine and Val is 0.
 % some cases may seem redundant, but this is to eliminate duplicate answers (at corners esp.)
 mine_at_cell(Nrow,Ncol,Row,Col,_,0) :- \+ in_bounds(Nrow,Ncol,Row,Col).
-mine_at_cell(Nrow,Ncol,Row,Col,GameBoard,1) :- in_bounds(Nrow,Ncol,Row,Col), list_ref_2d(Row,Col,GameBoard,x).
-mine_at_cell(Nrow,Ncol,Row,Col,GameBoard,0) :- in_bounds(Nrow,Ncol,Row,Col), list_ref_2d(Row,Col,GameBoard,Cell), dif(x,Cell).
+mine_at_cell(Nrow,Ncol,Row,Col,Gameboard,1) :- in_bounds(Nrow,Ncol,Row,Col), list_ref_2d(Row,Col,Gameboard,x).
+mine_at_cell(Nrow,Ncol,Row,Col,Gameboard,0) :- in_bounds(Nrow,Ncol,Row,Col), list_ref_2d(Row,Col,Gameboard,Cell), dif(x,Cell).
 
 %in_bounds(Nrow,Ncol,Row,Col) determines if (Row,Col) are in a matrix with Nrow rows and Ncol cols.
-in_bounds(Nrow,Ncol,Row,Col) :- Row>0,Row<Nrow+1,Col>0,Col<Ncol+1.
+in_bounds(Nrow,Ncol,Row,Col) :- number(Row), number(Col),Row>0,Row<Nrow+1,Col>0,Col<Ncol+1.
+
+%num_to_row_col(N,Nrow,Ncol,Row,Col) is true if Row,Col correspond to the Nth cell on the board
+%i.e. on a 3x3 board, N=1 corresponds to Row=1, Col=1, and
+%N=4 corresponds to Row=2,Col=1.
+num_to_row_col(N,Nrow,Ncol,Row,Col) :- is(Row,ceil(N/Ncol)), is(Col,mod(N-1,Ncol)+1).
+
+%-------------------------------------------SECTION D: USER INPUT AND GAME STATE UPDATES-------------------------------
+% start_game(Nrow,Ncol,Nlives,Gameboard,Revealed) is true if a Row and Column to reveal is succesfully requested from the user,
+% and the next steps are taken.
+start_game(Nrow,Ncol,Nlives,Gameboard,Revealed) :-
+	write("-------------------------------------------"), nl,
+	write("Lives remaining: *"), write(Nlives), write("*"), nl,
+	write("Make your next move!"), nl,
+	request_row_col(Nrow,Ncol,Row,Col),
+	list_set_2d(Row,Col,1,Revealed,UpdatedRevealed),	
+	print_game_board(Nrow,Ncol,Gameboard,UpdatedRevealed),	
+	list_ref_2d(Row,Col,Gameboard,LastRevealedElement),
+	next_steps(Nrow,Ncol,Nlives,Gameboard,Revealed,UpdatedRevealed,LastRevealedElement).
+
+request_row_col(Nrow,Ncol,Row,Col) :-
+	write("Row    of cell to reveal:  "), read(ReadR),
+	write("Column of cell to reveal:  "), read(ReadC),
+	check_row_col(Nrow,Ncol,ReadR,ReadC,Row,Col).
+
+%check_row_col is true if ReadR, ReadC, are user-specified inputs, and Row, Col, are valid inbound inputs based on Nrow, Ncol, ReadR, ReadC.
+%if ReadR and ReadC are not valid inputs, then Row, Col, are requested again.
+check_row_col(Nrow,Ncol,Row,Col,Row,Col) :- in_bounds(Nrow,Ncol,Row,Col).
+check_row_col(Nrow,Ncol,ReadR,ReadC,Row,Col) :-
+	\+ in_bounds(Nrow,Ncol,ReadR,ReadC),
+	write("Bad input. Please enter again."), nl,
+	request_row_col(Nrow,Ncol,Row,Col).
+
+%next_steps(Nrow,Ncol,Nlives,Gameboard,Revealed,UpdatedRevealed,LastRevealedElement)
+%is true if the game is updated properly based on the current state of gameboard, revealed, and
+%what the last revealed element was.
+%TODO: add cases with multiple lives.
+next_steps(Nrow,Ncol,1,Gameboard,Revealed,UpdatedRevealed,x) :- 
+	%Revealed a mine, and lives is 1: Game Over.
+	write("You have revealed a mine! Lost a life."), nl,
+	write("Game over! You have run out of lives.").
+next_steps(Nrow,Ncol,Nlives,Gameboard,Revealed,UpdatedRevealed,E) :- 
+	%Revealed a non-mine
+	\+ all_found(Nrow,Ncol,Gameboard,UpdatedRevealed),
+	dif(E,x),
+	nl,
+	start_game(Nrow,Ncol,Nlives,Gameboard,UpdatedRevealed).
+next_steps(Nrow,Ncol,_,Gameboard,_,UpdatedRevealed,_) :-
+	%winning case
+	all_found(Nrow,Ncol,Gameboard,UpdatedRevealed),
+	nl,
+	write("###########################################"), nl,
+	generate_matrix(Nrow,Ncol,1,AllRevealed),
+	print_game_board(Nrow,Ncol,Gameboard,AllRevealed),
+	write("You have found all mines!"), nl,
+	write("You win!!!").
+
+%all_found(Gameboard,Revealed) is true if all non-mine squares in revealed have been revealed,
+%based on comparison between Gameboard and Revealed, which are each Ncol * Nrow matrices.
+all_found(Nrow,Ncol,Gameboard,Revealed) :-
+	Max is Nrow*Ncol,
+	all_found(Max,1,Nrow,Ncol,Gameboard,Revealed).
+all_found(Max,Current,_,_,_,_) :- Current > Max.
+all_found(Max,Current,Nrow,Ncol,Gameboard,Revealed) :- 
+	Current < Max + 1,
+	num_to_row_col(Current,Nrow,Ncol,Row,Col),
+	list_ref_2d(Row,Col,Gameboard,x),
+	Next is Current+1,
+	all_found(Max,Next,Nrow,Ncol,Gameboard,Revealed).
+all_found(Max,Current,Nrow,Ncol,Gameboard,Revealed) :- 
+	Current < Max + 1,
+	num_to_row_col(Current,Nrow,Ncol,Row,Col),
+	list_ref_2d(Row,Col,Gameboard,E),
+	dif(E,x),
+	list_ref_2d(Row,Col,Revealed,1),
+	Next is Current+1,
+	all_found(Max,Next,Nrow,Ncol,Gameboard,Revealed).
+	
+
+	
+
