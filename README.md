@@ -3,11 +3,12 @@
 ## MINESWEEPER
 
 By: Imelda Suen, Rachel Wong, and Joshua Zhou
+
 CPSC312 2017W1 Project 1.
 
 This is an implementation of minesweeper in prolog.
 
-#Instructions:
+# Instructions:
 
 All code is in the minesweeper.pl file. Put it in the directory of your choice, then either:
 1: In command line, type ./swipl mineweeper.pl
@@ -49,7 +50,7 @@ Column of cell to reveal:  |:
 The game continues until either all non-mine squares have been revealed, or you have revealed a mine and are out of lives. At that point the game will terminate.
 To play again, you must start over from the beginning of the instructions.
 
-#Implementation Details:
+# Implementation Details:
 
 Selecting cells to put mines in is done randomly using the ```randselect/3``` command - which randomly takes N elements from a list, removes them, and returns the removed elements. 
 This is done so we ensure all mines are unique.
