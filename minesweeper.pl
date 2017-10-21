@@ -21,7 +21,7 @@ validate_inputs(Nrow,Ncol,Nmines,Nlives) :-
 	generate_game_board(Nrow,Ncol,Nmines,Gameboard),
 	empty_game_board(Nrow,Ncol,Revealed),
 	print_game_board(Nrow,Ncol,Gameboard,Revealed),
-	start_game(Nrow,Ncol,Nlives,Gameboard,Revealed).	
+	start_game(Nrow,Ncol,Nlives,Nmines,Gameboard,Revealed).	
 validate_inputs(Nrow,Ncol,Nmines,Nlives) :-
 	\+ check_inputs(Nrow,Ncol,Nmines,Nlives),
 	write("Bad inputs! Terminating game"), nl.
@@ -96,8 +96,8 @@ print_game_board_row([H|T],CurRow, CurCol, Revealed) :-
 	Next is CurCol+1,
 	print_game_board_row(T,CurRow, Next, Revealed).
 
-%get_symbol is true when GBE is R and RE is 1, or
-%R is . and RE is z.
+%get_symbol is true when game board element is R and RE is 1 (element is revealed), or
+%R is . and RE is z (element has not been revealed).
 get_symbol(_,z,".").
 get_symbol(R,1,R).
 	
@@ -126,7 +126,6 @@ list_ref_2d(Row,Col,L,R) :-
 	list_ref(Row,L,RowList), list_ref(Col,RowList,R).
 	
 %list_ref(N,L,R) is true when R is the Nth element of L. 1-based indexing.
-%why the hell did I use an accumulator
 list_ref(N,L,R) :- length(L,Length), Length+1 > N, list_ref(N,1,L,R).
 list_ref(N,N,[R|T],R).
 list_ref(N,Cur,[_|T],R) :- Cur < N, Next is Cur+1, list_ref(N,Next,T,R).
@@ -145,7 +144,7 @@ list_set_2d(Row,Col,E,L,R) :-
 	
 %---------------------------------------------SECTION C: INITIALIZATION---------------------------------
 
-%generateMines Nrow,Ncol,Nmines,Gameboard is true when Gameboard is a 2D list containing mines and adjacency numbers.
+%generate_game_board Nrow,Ncol,Nmines,Gameboard is true when Gameboard is a 2D list containing mines and adjacency numbers.
 %This list contains Nrow elements, each element is a list of Ncol. 
 %There will be no duplicates.
 generate_game_board(Nrow,Ncol,Nmines,Gameboard) :-
@@ -220,17 +219,21 @@ in_bounds(Nrow,Ncol,Row,Col) :- number(Row), number(Col),Row>0,Row<Nrow+1,Col>0,
 num_to_row_col(N,Nrow,Ncol,Row,Col) :- is(Row,ceil(N/Ncol)), is(Col,mod(N-1,Ncol)+1).
 
 %-------------------------------------------SECTION D: USER INPUT AND GAME STATE UPDATES-------------------------------
-% start_game(Nrow,Ncol,Nlives,Gameboard,Revealed) is true if a Row and Column to reveal is succesfully requested from the user,
+% start_game(Nrow,Ncol,Nlives,Nmines,Gameboard,Revealed) is true if a Row and Column to reveal is succesfully requested from the user,
 % and the next steps are taken.
-start_game(Nrow,Ncol,Nlives,Gameboard,Revealed) :-
+start_game(Nrow,Ncol,Nlives,Nmines,Gameboard,Revealed) :-
 	write("-------------------------------------------"), nl,
 	write("Lives remaining: *"), write(Nlives), write("*"), nl,
 	write("Make your next move!"), nl,
+	
+	nl, write("This is the backend gameboard, for testing/debugging purposes"), nl,
+	write(Gameboard), nl, nl,
+	
 	request_row_col(Nrow,Ncol,Row,Col),
 	list_set_2d(Row,Col,1,Revealed,UpdatedRevealed),	
 	print_game_board(Nrow,Ncol,Gameboard,UpdatedRevealed),	
 	list_ref_2d(Row,Col,Gameboard,LastRevealedElement),
-	next_steps(Nrow,Ncol,Nlives,Gameboard,Revealed,UpdatedRevealed,LastRevealedElement).
+	next_steps(Nrow,Ncol,Nlives,Nmines,Gameboard,Revealed,UpdatedRevealed,LastRevealedElement).
 
 request_row_col(Nrow,Ncol,Row,Col) :-
 	write("Row    of cell to reveal:  "), read(ReadR),
@@ -249,17 +252,40 @@ check_row_col(Nrow,Ncol,ReadR,ReadC,Row,Col) :-
 %is true if the game is updated properly based on the current state of gameboard, revealed, and
 %what the last revealed element was.
 %TODO: add cases with multiple lives.
-next_steps(Nrow,Ncol,1,Gameboard,Revealed,UpdatedRevealed,x) :- 
+next_steps(_,_,1,_,_,_,_,x) :- 
 	%Revealed a mine, and lives is 1: Game Over.
 	write("You have revealed a mine! Lost a life."), nl,
 	write("Game over! You have run out of lives.").
-next_steps(Nrow,Ncol,Nlives,Gameboard,Revealed,UpdatedRevealed,E) :- 
+	
+next_steps(Nrow,Ncol,Nlives,Nmines,Gameboard,Revealed,_,x) :-
+	%Revealed a mine, and more than one life left: shuffle all remaining unrevealed tiles and 
+	%update already revealed tiles.
+	Nlives > 1, 
+	write("You have revealed a mine! Lost a life!"), nl,
+	all_unrevealed(Nrow,Ncol,Revealed,Unrevealed),
+	write("Unrevealed list:"), write(Unrevealed), nl,
+	randselect(Nmines,Unrevealed,MineCells),
+	write("Mines list:"), write(MineCells), nl,
+	empty_game_board(Nrow,Ncol,EGB),
+	slot_mines(EGB,MineCells,MinesGameboard),
+	write("Mines Gameboard:"), write(MinesGameboard), nl,
+	Ncells is Nrow*Ncol,
+	count_adjacent(Ncells,Nrow,Ncol,MinesGameboard,NewGameboard),
+	write("New Gameboard:"), write(NewGameboard), nl,
+	
+	write("All mines shuffled and tiles updated"), nl,
+	print_game_board(Nrow,Ncol,NewGameboard,Revealed),
+	
+	NLifeLost is Nlives - 1,
+	start_game(Nrow,Ncol,NLifeLost,Nmines,NewGameboard,Revealed).
+	
+next_steps(Nrow,Ncol,Nlives,Nmines,Gameboard,Revealed,UpdatedRevealed,E) :- 
 	%Revealed a non-mine
 	\+ all_found(Nrow,Ncol,Gameboard,UpdatedRevealed),
 	dif(E,x),
 	nl,
-	start_game(Nrow,Ncol,Nlives,Gameboard,UpdatedRevealed).
-next_steps(Nrow,Ncol,_,Gameboard,_,UpdatedRevealed,_) :-
+	start_game(Nrow,Ncol,Nlives,Nmines,Gameboard,UpdatedRevealed).
+next_steps(Nrow,Ncol,_,_,Gameboard,_,UpdatedRevealed,_) :-
 	%winning case
 	all_found(Nrow,Ncol,Gameboard,UpdatedRevealed),
 	nl,
@@ -269,6 +295,34 @@ next_steps(Nrow,Ncol,_,Gameboard,_,UpdatedRevealed,_) :-
 	write("You have found all mines!"), nl,
 	write("You win!!!").
 
+%num_to_row_col(N,Nrow,Ncol,Row,Col) is true if Row,Col correspond to the Nth cell on the board
+%i.e. on a 3x3 board, N=1 corresponds to Row=1, Col=1, and
+%N=4 corresponds to Row=2,Col=1.
+%num_to_row_col(N,Nrow,Ncol,Row,Col) :- is(Row,ceil(N/Ncol)), is(Col,mod(N-1,Ncol)+1).
+	
+%all_unrevealed is true if Unrevealed is list of positions of all unrevealed items
+all_unrevealed(Nrow,Ncol,Revealed,Unrevealed) :-
+	Max is Nrow*Ncol,
+	%write("Max is: "), write(Max), nl,
+	all_unrevealed(Max,1,Nrow,Ncol,Revealed,Unrevealed).
+all_unrevealed(Max,Current,_,_,_,[]) :- 
+	%write("At base case: "), write(Current), nl,
+	Current > Max.
+all_unrevealed(Max,Current,Nrow,Ncol,Revealed,[Current|Unrevealed]) :-
+	Current < Max + 1,
+	num_to_row_col(Current,Nrow,Ncol,Row,Col),
+	list_ref_2d(Row,Col,Revealed,z),
+	%write("At first case: "), write(Current), nl,
+	Next is Current+1,
+	all_unrevealed(Max,Next,Nrow,Ncol,Revealed,Unrevealed).
+all_unrevealed(Max,Current,Nrow,Ncol,Revealed,Unrevealed) :-
+	Current < Max + 1,
+	num_to_row_col(Current,Nrow,Ncol,Row,Col),
+	list_ref_2d(Row,Col,Revealed,1),
+	%write("At 2nd case: "), write(Current), nl,
+	Next is Current+1,
+	all_unrevealed(Max,Next,Nrow,Ncol,Revealed,Unrevealed).	
+	
 %all_found(Gameboard,Revealed) is true if all non-mine squares in revealed have been revealed,
 %based on comparison between Gameboard and Revealed, which are each Ncol * Nrow matrices.
 all_found(Nrow,Ncol,Gameboard,Revealed) :-
