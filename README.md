@@ -65,7 +65,7 @@ Life system: When revealing a mine and a player has >1 life, all unrevealed squa
 This is handled by the ```next_steps/7``` predicate.
 The general algorithm is:
 1. Revert the last move (by using the ```RevealedGameBoard``` parameter and not then ```UpdatedRevealedGameBoard``` parameter)
-2. Enumerate all unrevealed cells. (I.e. give each cell a corresponding integer, i.e. a cell at position (Row,Col) will be represeted by the integer (Row*Col) + 1.
+2. Enumerate all unrevealed cells. (I.e. give each cell a corresponding integer, i.e. a cell at position (Row,Col) on a NrowxNcol board will be represeted by the integer (Row*Ncol) + Col.
 This can be done using the ```num_to_row_col/5``` predicate.
 3. Randomly select ```Nmines``` cells from the above enumerated list.
 4. Use ```empty_game_board/3```, ```slot_mines/4```, and ```count_adjacent/5``` to create the new gameboard with the new mine locations
