@@ -3,33 +3,69 @@
 %this is the main function. Run it to start the game.
 main :- 
 	write("Welcome to minesweeper!"), nl,
-	get_info(Nrow,Ncol,Nmines,Nlives),		
-	validate_inputs(Nrow,Ncol,Nmines,Nlives).
+	choose_board(Nrow,Ncol,Nmines,Nlives),	
+	initialize_game(Nrow,Ncol,Nmines,Nlives).
 	
 
-%get_info(Nrow,Ncol,Nmines,Nlives) reads user input and is true if each of the above are valid inputs.
-get_info(Nrow,Ncol,Nmines,Nlives) :-
-	write("Number of rows:    (max 99) "), read(Nrow), 
-	write("Number of columns: (max 50)  "), read(Ncol), 
-	write("Number of mines:             "), read(Nmines),
-	write("Number of lives:             "), read(Nlives),nl.
+%choose_board(Nrow,Ncol,Nmines,Nlives) allows user to select from 3 classic boards (9x9, 16x16, 16x30) or input their own
+choose_board(Nrow,Ncol,Nmines,Nlives) :-
+	write("Choose your board by inputting the corresponding number."), nl,
+	write("All classic games start with 1 life."), nl,
+	write("1. Classic Beginner (9x9)"), nl,
+	write("2. Classic Intermediate (16x16)"), nl,
+	write("3. Classic Expert (16x30)"), nl,
+	write("4. Make my own"), nl,
+	write("Input choice: "), read(Choice),
+	correct_game(Nrow,Ncol,Nmines,Nlives,Choice).
 
 %validate_inputs is true if Nrow,Ncol,Nmines, and Nlives, are valid. If they are the game process is continued. If not, the game process is terminated.
-validate_inputs(Nrow,Ncol,Nmines,Nlives) :- 
-	check_inputs(Nrow,Ncol,Nmines,Nlives),
+initialize_game(Nrow,Ncol,Nmines,Nlives) :- 
 	print_info(Nrow,Ncol,Nmines), nl,
 	generate_game_board(Nrow,Ncol,Nmines,Gameboard),
 	empty_game_board(Nrow,Ncol,Revealed),
 	print_game_board(Nrow,Ncol,Gameboard,Revealed),
 	start_game(Nrow,Ncol,Nlives,Nmines,Gameboard,Revealed).	
-validate_inputs(Nrow,Ncol,Nmines,Nlives) :-
+
+	
+%correct_game(Nrow,Ncol,Nmines,Nlives,Choice) returns true if Nrow,Ncol,Nmines,and Nlives correctly corresponds to user's choice of start board.
+correct_game(9,9,10,1,1).
+correct_game(16,16,40,1,2).
+correct_game(16,30,99,1,3).
+correct_game(Nrow,Ncol,Nmines,Nlives,4) :- 
+	get_info(Nrow,Ncol,Nmines,Nlives),
+	valid_inputs(Nrow,Ncol,Nmines,Nlives).
+correct_game(Nrow,Ncol,Nmines,Nlives,Choice) :- 
+	\+ valid_board_choice(Choice),
+	write("Bad input. Please choose again."), nl, nl,
+	choose_board(Nrow,Ncol,Nmines,Nlives).
+
+%get_info(Nrow,Ncol,Nmines,Nlives) reads user input and is true if each of the above are valid inputs.
+get_info(Nrow,Ncol,Nmines,Nlives) :-
+	write("Number of rows:    (max 99)  "), read(Nrow), 
+	write("Number of columns: (max 50)  "), read(Ncol), 
+	write("Number of mines:             "), read(Nmines),
+	write("Number of lives:             "), read(Nlives),nl.
+
+%valid_inputs is true if Nrow, Ncol, Nmines, and Nlives are valid. If they are, will make a board with those characteristics. If not, game process is restarted. 
+valid_inputs(Nrow,Ncol,Nmines,Nlives) :- 
+	check_inputs(Nrow,Ncol,Nmines,Nlives).	
+valid_inputs(Nrow,Ncol,Nmines,Nlives) :-
 	\+ check_inputs(Nrow,Ncol,Nmines,Nlives),
-	write("Bad inputs! Terminating game"), nl.
+	write("Bad input(s). Restarting game."), nl, nl,
+	main.	
 
 %check_inputs(Nrow,Ncol,Nmines,Nlives) is true if each of the above parameters are okay for game creation.
 check_inputs(Nrow,Ncol,Nmines,Nlives) :-
 	number(Nrow),number(Ncol),number(Nmines),number(Nlives),
 	Nrow > 0, Nrow < 100, Ncol > 0, Ncol < 51, Nmines > 0, Nmines < Nrow*Ncol, Nlives > 0.
+	
+%valid_board_choice(Choice) returns true if choice of board is valid
+valid_board_choice(1).
+valid_board_choice(2).
+valid_board_choice(3).
+valid_board_choice(4).	
+
+
 
 	
 %----------------------------------------SECTION A: BOARD PRINTING PREDICATES/FUNCIONS-----------------------------------------
@@ -289,11 +325,6 @@ next_steps(Nrow,Ncol,_,_,Gameboard,_,UpdatedRevealed,_) :-
 	print_game_board(Nrow,Ncol,Gameboard,AllRevealed),
 	write("You have found all mines!"), nl,
 	write("You win!!!").
-
-%num_to_row_col(N,Nrow,Ncol,Row,Col) is true if Row,Col correspond to the Nth cell on the board
-%i.e. on a 3x3 board, N=1 corresponds to Row=1, Col=1, and
-%N=4 corresponds to Row=2,Col=1.
-%num_to_row_col(N,Nrow,Ncol,Row,Col) :- is(Row,ceil(N/Ncol)), is(Col,mod(N-1,Ncol)+1).
 	
 %all_unrevealed is true if Unrevealed is list of positions of all unrevealed items
 all_unrevealed(Nrow,Ncol,Revealed,Unrevealed) :-
