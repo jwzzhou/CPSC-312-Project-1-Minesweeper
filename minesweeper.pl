@@ -316,9 +316,6 @@ start_game(Nrow,Ncol,Nlives,Nmines,Gameboard,Revealed) :-
 	write("Lives remaining: *"), write(Nlives), write("*"), nl,
 	write("Make your next move!"), nl,
 	
-	nl, write("This is the backend gameboard, for testing/debugging purposes"), nl,
-	write(Gameboard), nl, nl,
-	
 	request_row_col(Nrow,Ncol,Row,Col),
 	
 	list_ref_2d(Row,Col,Gameboard,LastRevealedElement),
