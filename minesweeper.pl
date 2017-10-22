@@ -177,7 +177,40 @@ list_set_2d(Row,_,_,L,L) :- Row < 1.
 list_set_2d(Row,Col,E,L,R) :-
 	list_ref(Row,L,RowList), list_set(Col,E,RowList,NewRowList),
 	list_set(Row,NewRowList,L,R).	
-	
+
+%---reveal nearby empty blocks-----
+
+check_rl(R,1) :- R < 1.
+check_rl(R,R) :- R >= 1.
+check_cl(C,1) :- C < 1.
+check_cl(C,C) :- C >=1.
+check_row(Nrow,R1,Nrow) :- R1 >= Nrow.
+check_row(Nrow,R1,R1) :- R1 < Nrow.
+check_col(Ncol,C1,Ncol) :- C1 >= Ncol.
+check_col(Ncol,C1,C1) :- C1 < Ncol.
+
+reveal_more(Row,Col,D,G,D) :-
+	list_ref_2d(Row,Col,G,x).
+
+reveal_more(Row,Col,Disp,Gb,New) :-
+	list_ref_2d(Row,Col,Gb,T),
+	number(T),
+	list_set_2d(Row,Col,1,Disp,New).
+
+list_update_2d(Nrow,Ncol,Row,Col,D,G,V,N) :- 
+	list_ref_2d(Row,Col,G,V),
+	V is 0,
+	C is Col-1, R is Row-1, C1 is Col+1, R1 is Row+1,
+	check_rl(R,R0), check_cl(C,C0),
+	check_row(Nrow,R1,R2), check_col(Ncol,C1,C2),
+	reveal_more(Row,C0,D,G,N0), reveal_more(Row,C2,N0,G,N1),
+	reveal_more(R0,C0,N1,G,N2), reveal_more(R0,Col,N2,G,N3), reveal_more(R0,C2,N3,G,N4),
+	reveal_more(R2,C0,N4,G,N5), reveal_more(R2,Col,N5,G,N6), reveal_more(R2,C2,N6,G,N).
+
+list_update_2d(Nrow,Ncol,Row,Col,D,G,V,D) :-
+	list_ref_2d(Row,Col,G,V),
+	dif(V,0).
+
 %---------------------------------------------SECTION C: INITIALIZATION---------------------------------
 
 %generate_game_board Nrow,Ncol,Nmines,Gameboard is true when Gameboard is a 2D list containing mines and adjacency numbers.
@@ -267,9 +300,10 @@ start_game(Nrow,Ncol,Nlives,Nmines,Gameboard,Revealed) :-
 	
 	request_row_col(Nrow,Ncol,Row,Col),
 	list_set_2d(Row,Col,1,Revealed,UpdatedRevealed),	
-	print_game_board(Nrow,Ncol,Gameboard,UpdatedRevealed),	
 	list_ref_2d(Row,Col,Gameboard,LastRevealedElement),
-	next_steps(Nrow,Ncol,Nlives,Nmines,Gameboard,Revealed,UpdatedRevealed,LastRevealedElement).
+	list_update_2d(Nrow,Ncol,Row,Col,UpdatedRevealed,Gameboard,Element,UpdatedRevealedNew),
+	print_game_board(Nrow,Ncol,Gameboard,UpdatedRevealedNew),
+	next_steps(Nrow,Ncol,Nlives,Nmines,Gameboard,Revealed,UpdatedRevealedNew,LastRevealedElement).
 
 request_row_col(Nrow,Ncol,Row,Col) :-
 	write("Row    of cell to reveal:  "), read(ReadR),
