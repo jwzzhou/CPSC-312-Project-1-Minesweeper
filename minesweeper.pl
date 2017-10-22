@@ -180,37 +180,58 @@ list_set_2d(Row,Col,E,L,R) :-
 
 %---reveal nearby empty blocks-----
 
+%the following checks upper/lower bounds:
+%check_rl(X,Y) and check_cl(X,Y) will have Y=X if X is not out of bounds, or
+% Y=1 if X would be out of bounds.
+%check_row(B,X,Z) and check_col(X,Y,Z) will have Z=X if X is not out of bounds,
+% or Y=B if X would be out of bounds.
 check_rl(R,1) :- R < 1.
 check_rl(R,R) :- R >= 1.
 check_cl(C,1) :- C < 1.
 check_cl(C,C) :- C >=1.
-check_row(Nrow,R1,Nrow) :- R1 >= Nrow.
-check_row(Nrow,R1,R1) :- R1 < Nrow.
-check_col(Ncol,C1,Ncol) :- C1 >= Ncol.
-check_col(Ncol,C1,C1) :- C1 < Ncol.
+check_ru(Nrow,R1,Nrow) :- R1 >= Nrow.
+check_ru(Nrow,R1,R1) :- R1 < Nrow.
+check_cu(Ncol,C1,Ncol) :- C1 >= Ncol.
+check_cu(Ncol,C1,C1) :- C1 < Ncol.
 
-reveal_more(Row,Col,D,G,D) :-
-	list_ref_2d(Row,Col,G,x).
 
-reveal_more(Row,Col,Disp,Gb,New) :-
-	list_ref_2d(Row,Col,Gb,T),
-	number(T),
-	list_set_2d(Row,Col,1,Disp,New).
-
-list_update_2d(Nrow,Ncol,Row,Col,D,G,V,N) :- 
+%list_update_2d(Nrow,Ncol,Row,Col,D,G,N) is true when N is new revealed list after revealing 
+% current cell at (Row,Col) and all 0 cells and edge non-zero cells are revealed
+list_update_2d(Nrow,Ncol,Row,Col,D,G,N) :- 
+	\+ revealed(Row,Col,D),
+	list_ref_2d(Row,Col,G,0),
+	list_set_2d(Row,Col,1,D,N0),
+	reveal_more(Nrow,Ncol,Row,Col,N0,G,N).
+list_update_2d(Nrow,Ncol,Row,Col,D,G,N) :-
+	\+ revealed(Row,Col,D),
 	list_ref_2d(Row,Col,G,V),
-	V is 0,
+	number(V),
+	dif(V,0),
+	list_set_2d(Row,Col,1,D,N).
+list_update_2d(Nrow,Ncol,Row,Col,D,G,D) :-
+	\+ revealed(Row,Col,D),
+	list_ref_2d(Row,Col,G,x).
+list_update_2d(Nrow,Ncol,Row,Col,D,G,D) :-
+	revealed(Row,Col,D).
+
+%reveal_more will check adjacent cells that are in-bounds and recursively reveal them
+% if they are 0 or connected to a 0 cell
+reveal_more(Nrow,Ncol,Row,Col,D,G,N) :-
 	C is Col-1, R is Row-1, C1 is Col+1, R1 is Row+1,
 	check_rl(R,R0), check_cl(C,C0),
-	check_row(Nrow,R1,R2), check_col(Ncol,C1,C2),
-	reveal_more(Row,C0,D,G,N0), reveal_more(Row,C2,N0,G,N1),
-	reveal_more(R0,C0,N1,G,N2), reveal_more(R0,Col,N2,G,N3), reveal_more(R0,C2,N3,G,N4),
-	reveal_more(R2,C0,N4,G,N5), reveal_more(R2,Col,N5,G,N6), reveal_more(R2,C2,N6,G,N).
+	check_ru(Nrow,R1,R2), check_cu(Ncol,C1,C2),
+	list_update_2d(Nrow,Ncol,Row,C0,D,G,N0), 
+	list_update_2d(Nrow,Ncol,Row,C2,N0,G,N1),
+	list_update_2d(Nrow,Ncol,R0,C0,N1,G,N2), 
+	list_update_2d(Nrow,Ncol,R0,Col,N2,G,N3), 
+	list_update_2d(Nrow,Ncol,R0,C2,N3,G,N4),
+	list_update_2d(Nrow,Ncol,R2,C0,N4,G,N5), 
+	list_update_2d(Nrow,Ncol,R2,Col,N5,G,N6), 
+	list_update_2d(Nrow,Ncol,R2,C2,N6,G,N).		
 
-list_update_2d(Nrow,Ncol,Row,Col,D,G,V,D) :-
-	list_ref_2d(Row,Col,G,V),
-	dif(V,0).
-
+%revealed(Row,Col,D) is true if cell at (Row,Col) is already revealed in D
+revealed(Row,Col,D) :-
+	list_ref_2d(Row,Col,D,1).
 %---------------------------------------------SECTION C: INITIALIZATION---------------------------------
 
 %generate_game_board Nrow,Ncol,Nmines,Gameboard is true when Gameboard is a 2D list containing mines and adjacency numbers.
@@ -295,13 +316,14 @@ start_game(Nrow,Ncol,Nlives,Nmines,Gameboard,Revealed) :-
 	write("Lives remaining: *"), write(Nlives), write("*"), nl,
 	write("Make your next move!"), nl,
 	
-	%nl, write("This is the backend gameboard, for testing/debugging purposes"), nl,
-	%write(Gameboard), nl, nl,
+	nl, write("This is the backend gameboard, for testing/debugging purposes"), nl,
+	write(Gameboard), nl, nl,
 	
 	request_row_col(Nrow,Ncol,Row,Col),
-	list_set_2d(Row,Col,1,Revealed,UpdatedRevealed),	
+	
 	list_ref_2d(Row,Col,Gameboard,LastRevealedElement),
-	list_update_2d(Nrow,Ncol,Row,Col,UpdatedRevealed,Gameboard,Element,UpdatedRevealedNew),
+	list_update_2d(Nrow,Ncol,Row,Col,Revealed,Gameboard,UpdatedRevealed),
+	list_set_2d(Row,Col,1,UpdatedRevealed,UpdatedRevealedNew),
 	print_game_board(Nrow,Ncol,Gameboard,UpdatedRevealedNew),
 	next_steps(Nrow,Ncol,Nlives,Nmines,Gameboard,Revealed,UpdatedRevealedNew,LastRevealedElement).
 
