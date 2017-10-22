@@ -14,7 +14,7 @@ choose_board(Nrow,Ncol,Nmines,Nlives) :-
 	write("1. Classic Beginner (9x9)"), nl,
 	write("2. Classic Intermediate (16x16)"), nl,
 	write("3. Classic Expert (16x30)"), nl,
-	write("4. Make my own"), nl,
+	write("4. Make my own!"), nl,
 	write("Input choice: "), read(Choice),
 	correct_game(Nrow,Ncol,Nmines,Nlives,Choice).
 
