@@ -2,7 +2,7 @@
 
 ## MINESWEEPER
 
-By: Imelda Suen, Rachel Wong, and Joshua Zhou
+By: Imelda Suen, Rachel Zhao, and Joshua Zhou
 
 CPSC312 2017W1 Project 1.
 
@@ -18,7 +18,16 @@ The game will then prompt you to input game parameters.
 
 ```
 Welcome to minesweeper!
-Number of rows:    (max 99) 10.
+Choose your board by inputting the corresponding number.
+All classic games start with 1 life.
+1. Classic Beginner (9x9)
+2. Classic Intermediate (16x16)
+3. Classic Expert (16x30)
+4. Make my own!
+```
+If you choose to make your own, you will be able to input your own game parameters. The game will restart if the parameters inputted are invalid.
+```
+Number of rows:    (max 99)  |: 10.
 Number of columns: (max 50)  |: 10.
 Number of mines:             |: 10.
 Number of lives:             |: 
@@ -47,8 +56,13 @@ Row    of cell to reveal:  |: 1.
 Column of cell to reveal:  |: 
 ```
 
+If the cell you reveal does not contain a mine, a number corresponding to the number of adjacent mines is revealed.
+If you reveal a mine, you will lose a life. If you are not out of lives, the remaining mines will be shuffled randomly in all unrevealed cells and revealed cells will be updated accordingly.
+
 The game continues until either all non-mine squares have been revealed, or you have revealed a mine and are out of lives. At that point the game will terminate.
 To play again, you must start over from the beginning of the instructions.
+
+
 
 # Implementation Details:
 
@@ -64,7 +78,7 @@ If the revealed board is 1, then the symbol on the game board is printed. If rev
 Life system: When revealing a mine and a player has >1 life, all unrevealed squares are shuffled, and a life is lost
 This is handled by the ```next_steps/7``` predicate.
 The general algorithm is:
-1. Revert the last move (by using the ```RevealedGameBoard``` parameter and not then ```UpdatedRevealedGameBoard``` parameter)
+1. Revert the last move (by using the ```RevealedGameBoard``` parameter and not the ```UpdatedRevealedGameBoard``` parameter)
 2. Enumerate all unrevealed cells. (I.e. give each cell a corresponding integer, i.e. a cell at position (Row,Col) on a NrowxNcol board will be represeted by the integer (Row*Ncol) + Col.
 This can be done using the ```num_to_row_col/5``` predicate.
 3. Randomly select ```Nmines``` cells from the above enumerated list.
