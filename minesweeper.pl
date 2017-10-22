@@ -202,16 +202,16 @@ list_update_2d(Nrow,Ncol,Row,Col,D,G,N) :-
 	list_ref_2d(Row,Col,G,0),
 	list_set_2d(Row,Col,1,D,N0),
 	reveal_more(Nrow,Ncol,Row,Col,N0,G,N).
-list_update_2d(Nrow,Ncol,Row,Col,D,G,N) :-
+list_update_2d(_,_,Row,Col,D,G,N) :-
 	\+ revealed(Row,Col,D),
 	list_ref_2d(Row,Col,G,V),
 	number(V),
 	dif(V,0),
 	list_set_2d(Row,Col,1,D,N).
-list_update_2d(Nrow,Ncol,Row,Col,D,G,D) :-
+list_update_2d(_,_,Row,Col,D,G,D) :-
 	\+ revealed(Row,Col,D),
 	list_ref_2d(Row,Col,G,x).
-list_update_2d(Nrow,Ncol,Row,Col,D,G,D) :-
+list_update_2d(_,_,Row,Col,D,_,D) :-
 	revealed(Row,Col,D).
 
 %reveal_more will check adjacent cells that are in-bounds and recursively reveal them
