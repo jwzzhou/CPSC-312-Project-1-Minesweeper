@@ -6,7 +6,7 @@ By: Imelda Suen, Rachel Zhao, and Joshua Zhou
 
 CPSC312 2017W1 Project 1.
 
-This is an implementation of minesweeper in prolog.
+This is an implementation of minesweeper in prolog. See http://wiki.ubc.ca/Course:CPSC312-2017-Minesweeper
 
 # Instructions:
 
