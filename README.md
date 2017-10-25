@@ -6,7 +6,7 @@ By: Imelda Suen, Rachel Zhao, and Joshua Zhou
 
 CPSC312 2017W1 Project 1.
 
-This is an implementation of minesweeper in prolog.
+This is an implementation of minesweeper in prolog. See http://wiki.ubc.ca/Course:CPSC312-2017-Minesweeper
 
 # Instructions:
 
@@ -57,7 +57,8 @@ Column of cell to reveal:  |:
 ```
 
 If the cell you reveal does not contain a mine, a number corresponding to the number of adjacent mines is revealed. 
-If you reveal a square with 0 adjacent mines, the empty squares in contact with the zero square will be revealed. 
+If you reveal a square with 0 adjacent mines, the empty squares in contact with the zero square will be revealed then propagate 
+recursively.
 
 If you reveal a mine, you will lose a life. If you are not out of lives, the remaining mines will be shuffled randomly in all unrevealed cells and revealed cells will be updated accordingly.
 
