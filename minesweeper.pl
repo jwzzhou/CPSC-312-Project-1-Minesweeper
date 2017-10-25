@@ -1,5 +1,6 @@
 % MINESWEEPER
 % See http://wiki.ubc.ca/Course:CPSC312-2017-Minesweeper
+
 %this is the main function. Run it to start the game.
 main :- 
 	write("Welcome to minesweeper!"), nl,
