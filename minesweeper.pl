@@ -180,55 +180,46 @@ list_set_2d(Row,Col,E,L,R) :-
 
 %---reveal nearby empty blocks-----
 
-%the following checks upper/lower bounds:
-%check_rl(X,Y) and check_cl(X,Y) will have Y=X if X is not out of bounds, or
-% Y=1 if X would be out of bounds.
-%check_row(B,X,Z) and check_col(X,Y,Z) will have Z=X if X is not out of bounds,
-% or Y=B if X would be out of bounds.
-check_rl(R,1) :- R < 1.
-check_rl(R,R) :- R >= 1.
-check_cl(C,1) :- C < 1.
-check_cl(C,C) :- C >=1.
-check_ru(Nrow,R1,Nrow) :- R1 >= Nrow.
-check_ru(Nrow,R1,R1) :- R1 < Nrow.
-check_cu(Ncol,C1,Ncol) :- C1 >= Ncol.
-check_cu(Ncol,C1,C1) :- C1 < Ncol.
-
-
 %list_update_2d(Nrow,Ncol,Row,Col,D,G,N) is true when N is new revealed list after revealing 
 % current cell at (Row,Col) and all 0 cells and edge non-zero cells are revealed
-list_update_2d(Nrow,Ncol,Row,Col,D,G,N) :- 
+list_update_2d(_,_,Row,Col,D,_,D) :-
+	revealed(Row,Col,D).
+list_update_2d(_,_,Row,Col,D,G,D) :-
 	\+ revealed(Row,Col,D),
-	list_ref_2d(Row,Col,G,0),
-	list_set_2d(Row,Col,1,D,N0),
-	reveal_more(Nrow,Ncol,Row,Col,N0,G,N).
+	list_ref_2d(Row,Col,G,x).
 list_update_2d(_,_,Row,Col,D,G,N) :-
 	\+ revealed(Row,Col,D),
 	list_ref_2d(Row,Col,G,V),
 	number(V),
 	dif(V,0),
 	list_set_2d(Row,Col,1,D,N).
-list_update_2d(_,_,Row,Col,D,G,D) :-
+list_update_2d(Nrow,Ncol,Row,Col,D,G,N) :- 
 	\+ revealed(Row,Col,D),
-	list_ref_2d(Row,Col,G,x).
-list_update_2d(_,_,Row,Col,D,_,D) :-
-	revealed(Row,Col,D).
+	list_ref_2d(Row,Col,G,0),
+	list_set_2d(Row,Col,1,D,N0),
+	reveal_more(Nrow,Ncol,Row,Col,N0,G,N).
 
-%reveal_more will check adjacent cells that are in-bounds and recursively reveal them
-% if they are 0 or connected to a 0 cell
+%reveal_more will be true if N is the updated revealed list after recursively revealing all
+% adjacent cells if they are 0 or connected to a 0 cell
 reveal_more(Nrow,Ncol,Row,Col,D,G,N) :-
 	C is Col-1, R is Row-1, C1 is Col+1, R1 is Row+1,
-	check_rl(R,R0), check_cl(C,C0),
-	check_ru(Nrow,R1,R2), check_cu(Ncol,C1,C2),
-	list_update_2d(Nrow,Ncol,Row,C0,D,G,N0), 
-	list_update_2d(Nrow,Ncol,Row,C2,N0,G,N1),
-	list_update_2d(Nrow,Ncol,R0,C0,N1,G,N2), 
-	list_update_2d(Nrow,Ncol,R0,Col,N2,G,N3), 
-	list_update_2d(Nrow,Ncol,R0,C2,N3,G,N4),
-	list_update_2d(Nrow,Ncol,R2,C0,N4,G,N5), 
-	list_update_2d(Nrow,Ncol,R2,Col,N5,G,N6), 
-	list_update_2d(Nrow,Ncol,R2,C2,N6,G,N).		
+	list_update_check(Nrow,Ncol,Row,C,D,G,N0), 
+	list_update_check(Nrow,Ncol,Row,C1,N0,G,N1),
+	list_update_check(Nrow,Ncol,R,C,N1,G,N2), 
+	list_update_check(Nrow,Ncol,R,Col,N2,G,N3), 
+	list_update_check(Nrow,Ncol,R,C1,N3,G,N4),
+	list_update_check(Nrow,Ncol,R1,C,N4,G,N5), 
+	list_update_check(Nrow,Ncol,R1,Col,N5,G,N6), 
+	list_update_check(Nrow,Ncol,R1,C1,N6,G,N).		
 
+%list_update_check(Nrow,Ncol,Row,Col,D,G,N) will be true if N is the updated revealed list after
+% performing list_update_2d on the cell at (Row,Col) if the cell is in bounds
+list_update_check(Nrow,Ncol,Row,Col,D,_,D) :-
+	\+ in_bounds(Nrow,Ncol,Row,Col).
+list_update_check(Nrow,Ncol,Row,Col,D,G,N) :-
+	in_bounds(Nrow,Ncol,Row,Col),
+	list_update_2d(Nrow,Ncol,Row,Col,D,G,N).
+	
 %revealed(Row,Col,D) is true if cell at (Row,Col) is already revealed in D
 revealed(Row,Col,D) :-
 	list_ref_2d(Row,Col,D,1).
